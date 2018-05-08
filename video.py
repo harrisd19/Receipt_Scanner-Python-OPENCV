@@ -18,9 +18,9 @@ def run_video(process_frame=lambda im:im, fps=30, camera_num=0):
     notebook.
     """
     from cv2 import VideoCapture, error, imencode
-    from IPython.display import Image, display, clear_output
+    from IPython.display import Image, display
     from time import time, sleep
-    delay = 1/fps # the number of seconds between frames
+    delay = 1/fps # the max number of seconds between frames
     vc = VideoCapture(camera_num)
     try:
         if not vc.isOpened(): return # if we did not successfully gain access to the camera
@@ -28,7 +28,8 @@ def run_video(process_frame=lambda im:im, fps=30, camera_num=0):
         is_capturing, frame = vc.read()
         if frame is None: return # no first frame
         # Process the frame, encode it as PNG, and display it
-        display(Image(imencode('.png', process_frame(frame))[1].tostring()))
+        im = process_frame(bgr2rgb(frame))
+        disp = display(Image(imencode('.jpg', bgr2rgb(im))[1].tostring(), width=im.shape[1], height=im.shape[0]), display_id=True)
         while is_capturing:
             # Keep getting new frames while they are available
             try:
@@ -37,11 +38,12 @@ def run_video(process_frame=lambda im:im, fps=30, camera_num=0):
                 is_capturing, frame = vc.read()
                 if frame is None: break # no next frame
                 # Process the frame, encode it as PNG, and display it
-                clear_output(wait=True)
-                im = Image(imencode('.png', process_frame(frame))[1].tostring())
-                display(im)
+                im = process_frame(bgr2rgb(frame))
+                disp.update(Image(imencode('.jpg', bgr2rgb(im))[1].tostring(), width=im.shape[1], height=im.shape[0]))
                 # Wait for a small amount of time to avoid frame rate going to high
-                wait = time() - start - delay
+                wait = delay - (time() - start)
                 if wait > 0: sleep(wait)
             except KeyboardInterrupt: break # lookout for a keyboard interrupt (stop button) to stop the script gracefully
+        return im
     finally: vc.release()
+    return None
